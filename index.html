@@ -1,0 +1,190 @@
+<!DOCTYPE html><html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gestion Cave</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{font-family:Arial;background:#1e1e1e;color:#fff;margin:0;padding:10px}
+.card{background:#2c2c2c;padding:12px;border-radius:10px;margin-bottom:10px}
+input,select,button{width:100%;padding:8px;margin-top:6px;border-radius:6px;border:none}
+button{background:#4caf50;color:#fff;font-weight:bold}
+.danger{background:#e53935}
+table{width:100%;border-collapse:collapse}
+th,td{border-bottom:1px solid #444;padding:6px;font-size:14px}
+h1,h2{text-align:center}
+.adminOnly{display:none}
+</style>
+</head>
+<body><!-- LOGIN --><div id="login" class="card">
+<h2>🔐 Connexion</h2>
+<select id="role">
+<option value="vendeuse">Vendeuse</option>
+<option value="admin">Admin</option>
+</select>
+<input id="pin" type="password" placeholder="Code PIN">
+<button id="btnLogin">Se connecter</button>
+</div><!-- APP --><div id="app" style="display:none">
+<h1>📒 Gestion Crédits & Monnaies</h1>
+<button id="btnLogout" style="margin-bottom:10px;background:#ff9800">Déconnecter</button><div class="card">
+<input id="client" placeholder="Client">
+<input id="boisson" placeholder="Produit">
+<input id="montant" type="number" placeholder="Montant FCFA">
+<button id="btnAddCredit">Ajouter crédit</button>
+</div><div class="card">
+<input id="fournisseur" placeholder="À qui doit-on ?">
+<input id="montantMonnaie" type="number" placeholder="Montant FCFA">
+<button id="btnAddMonnaie">Ajouter monnaie</button>
+</div><div class="card"><table id="tableCredits"></table></div>
+<div class="card"><table id="tableMonnaies"></table></div>
+<div class="card">
+<h3>Historique paiements</h3>
+<table id="tablePaiements"></table>
+</div>
+<div class="card adminOnly">
+<h3>Monnaies réglées</h3>
+<table id="tableMonnaiesReglees"></table>
+<div id="adminHistoryButtons" style="margin-top:10px;">
+<button id="restoreHistory">Restaurer tout l'historique</button>
+<button id="clearHistory">Supprimer tout l'historique</button>
+</div>
+</div>
+</div><script>
+const PIN_ADMIN = "1234";
+const PIN_VENDEUSE = "0000";
+
+let roleActuel = null;
+
+let credits = JSON.parse(localStorage.getItem("credits") || "[]");
+let monnaies = JSON.parse(localStorage.getItem("monnaies") || "[]");
+let paiements = JSON.parse(localStorage.getItem("paiements") || "[]");
+let monnaiesReglees = JSON.parse(localStorage.getItem("monnaiesReglees") || "[]");
+
+function save(){
+  localStorage.setItem("credits", JSON.stringify(credits));
+  localStorage.setItem("monnaies", JSON.stringify(monnaies));
+  localStorage.setItem("paiements", JSON.stringify(paiements));
+  localStorage.setItem("monnaiesReglees", JSON.stringify(monnaiesReglees));
+}
+
+// ===== CONNEXION =====
+document.getElementById("btnLogin").onclick = function(){
+  const r = document.getElementById("role").value;
+  const p = document.getElementById("pin").value;
+
+  if ((r === "admin" && p === PIN_ADMIN) || (r === "vendeuse" && p === PIN_VENDEUSE)){
+    roleActuel = r;
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+
+    document.querySelectorAll('.adminOnly').forEach(e => {
+      e.style.display = (roleActuel === 'admin') ? 'block' : 'none';
+    });
+
+    document.getElementById("pin").value = "";
+    render();
+  } else {
+    alert("Code incorrect");
+  }
+};
+
+// ===== DÉCONNEXION =====
+document.getElementById("btnLogout").onclick = function(){
+  roleActuel = null;
+  document.getElementById("app").style.display = "none";
+  document.getElementById("login").style.display = "block";
+};
+
+// ===== AJOUTS =====
+document.getElementById("btnAddCredit").onclick = function(){
+  if(!client.value || !montant.value) return alert("Champs manquants");
+  credits.push({c:client.value, b:boisson.value, m:montant.value});
+  client.value = boisson.value = montant.value = "";
+  save(); render();
+};
+
+document.getElementById("btnAddMonnaie").onclick = function(){
+  if(!fournisseur.value || !montantMonnaie.value) return alert("Champs manquants");
+  monnaies.push({f:fournisseur.value, m:montantMonnaie.value});
+  fournisseur.value = montantMonnaie.value = "";
+  save(); render();
+};
+
+// ===== ACTIONS =====
+function payer(i){
+  paiements.push({...credits[i], date:new Date().toLocaleString()});
+  credits.splice(i,1);
+  save(); render();
+}
+
+function reglMonnaie(i){
+  monnaiesReglees.push({
+    f: monnaies[i].f,
+    m: monnaies[i].m,
+    date: new Date().toLocaleString()
+  });
+  monnaies.splice(i,1);
+  save(); render();
+}
+
+function supCredit(i){
+  if(roleActuel !== 'admin') return;
+  credits.splice(i,1);
+  save(); render();
+}
+
+function supMonnaie(i){
+  if(roleActuel !== 'admin') return;
+  monnaies.splice(i,1);
+  save(); render();
+}
+
+function supPaiement(i){
+  if(roleActuel !== 'admin') return;
+  paiements.splice(i,1);
+  save(); render();
+}
+
+function restoreHistory(){
+  if(roleActuel !== 'admin') return;
+  credits = [];
+  monnaies = [];
+  paiements = [];
+  monnaiesReglees = [];
+  save(); render();
+}
+
+function clearHistory(){
+  if(roleActuel !== 'admin') return;
+  paiements = [];
+  save(); render();
+}
+
+restoreHistory.onclick = restoreHistory;
+clearHistory.onclick = clearHistory;
+
+// ===== AFFICHAGE =====
+function render(){
+  tableCredits.innerHTML = '<tr><th>Client</th><th>Produit</th><th>Montant</th><th></th></tr>';
+  credits.forEach((e,i)=>{
+    tableCredits.innerHTML += `<tr><td>${e.c}</td><td>${e.b||''}</td><td>${e.m} FCFA</td><td><button onclick="payer(${i})">Payé</button>${roleActuel==='admin'?` <button class='danger' onclick="supCredit(${i})">X</button>`:''}</td></tr>`;
+  });
+
+  tableMonnaies.innerHTML = '<tr><th>Personne</th><th>Montant</th><th></th></tr>';
+  monnaies.forEach((e,i)=>{
+    tableMonnaies.innerHTML += `<tr><td>${e.f}</td><td>${e.m} FCFA</td><td>${roleActuel==='admin'?`<button class='danger' onclick="supMonnaie(${i})">X</button>`:`<button onclick="reglMonnaie(${i})">Réglé</button>`}</td></tr>`;
+  });
+
+  if(roleActuel === 'admin'){
+    tableMonnaiesReglees.innerHTML = '<tr><th>Personne</th><th>Montant</th><th>Date</th></tr>';
+    monnaiesReglees.forEach(m=>{
+      tableMonnaiesReglees.innerHTML += `<tr><td>${m.f}</td><td>${m.m} FCFA</td><td>${m.date}</td></tr>`;
+    });
+  }
+
+  tablePaiements.innerHTML = '<tr><th>Client</th><th>Produit</th><th>Montant</th><th>Date</th><th></th></tr>';
+  paiements.forEach((p,i)=>{
+    tablePaiements.innerHTML += `<tr><td>${p.c}</td><td>${p.b||''}</td><td>${p.m} FCFA</td><td>${p.date}</td><td>${roleActuel==='admin'?`<button class='danger' onclick="supPaiement(${i})">X</button>`:''}</td></tr>`;
+  });
+}
+</script></body>
+</html>
