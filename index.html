@@ -1,190 +1,995 @@
-<!DOCTYPE html><html lang="fr">
+<!DOCTYPE html>
+<html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Gestion Cave</title>
+<title>Cave Au QG</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#020617">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body{font-family:Arial;background:#1e1e1e;color:#fff;margin:0;padding:10px}
-.card{background:#2c2c2c;padding:12px;border-radius:10px;margin-bottom:10px}
-input,select,button{width:100%;padding:8px;margin-top:6px;border-radius:6px;border:none}
-button{background:#4caf50;color:#fff;font-weight:bold}
-.danger{background:#e53935}
-table{width:100%;border-collapse:collapse}
-th,td{border-bottom:1px solid #444;padding:6px;font-size:14px}
-h1,h2{text-align:center}
-.adminOnly{display:none}
+:root{
+    --bg:#020617;
+    --card:#0f172a;
+    --primary:#22c55e;
+    --secondary:#3b82f6;
+    --danger:#ef4444;
+    --text:#e5e7eb;
+    --muted:#94a3b8;
+}
+*{box-sizing:border-box}
+body{
+    margin:0;
+    font-family:'Segoe UI',Roboto,Arial;
+    background:#020617;
+    color:var(--text);
+}
+header{
+    background:#020617;
+    padding:16px;
+    text-align:center;
+    font-size:22px;
+    font-weight:700;
+    position:sticky;
+    top:0;
+    z-index:10;
+}
+.container{padding:16px}
+.card{
+    background:var(--card);
+    padding:16px;
+    border-radius:16px;
+    margin-bottom:16px;
+}
+.btn{
+    width:100%;
+    padding:14px;
+    margin:8px 0;
+    font-size:16px;
+    font-weight:600;
+    border:none;
+    border-radius:14px;
+    background:linear-gradient(135deg,var(--secondary),var(--primary));
+    color:#fff;
+    cursor:pointer;
+}
+.delBtn{
+    background:var(--danger);
+    border:none;
+    border-radius:8px;
+    padding:4px 8px;
+    color:#fff;
+    cursor:pointer;
+}
+.logout{
+    width:calc(100% - 32px);
+    margin:12px 16px;
+    padding:12px;
+    background:var(--danger);
+    border:none;
+    border-radius:14px;
+    color:#fff;
+    font-weight:600;
+}
+input,select{
+    width:100%;
+    padding:12px;
+    margin:6px 0;
+    border-radius:12px;
+    border:none;
+    background:#020617;
+    color:#fff;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:14px;
+}
+th,td{
+    padding:10px;
+    text-align:center;
+    border-bottom:1px solid #1e293b;
+}
+.alert{
+    color:#ef4444;
+    font-weight:700;
+}
+.hidden{display:none}
+.stat{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    padding:6px 0;
+}
+.highlight{
+    background:#22c55e33;
+    transition:0.5s;
+}
+.smallText{
+    font-size:13px;
+    color:var(--muted);
+}
+.totalBox{
+    background:#020617;
+    border-radius:14px;
+    padding:12px;
+    margin-top:12px;
+}
 </style>
 </head>
-<body><!-- LOGIN --><div id="login" class="card">
-<h2>🔐 Connexion</h2>
+
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="container">
+<header>🔒 Cave « Au QG »</header>
+<div class="card">
 <select id="role">
-<option value="vendeuse">Vendeuse</option>
+<option value="vendeur">Vendeur</option>
 <option value="admin">Admin</option>
 </select>
 <input id="pin" type="password" placeholder="Code PIN">
-<button id="btnLogin">Se connecter</button>
-</div><!-- APP --><div id="app" style="display:none">
-<h1>📒 Gestion Crédits & Monnaies</h1>
-<button id="btnLogout" style="margin-bottom:10px;background:#ff9800">Déconnecter</button><div class="card">
-<input id="client" placeholder="Client">
-<input id="boisson" placeholder="Produit">
-<input id="montant" type="number" placeholder="Montant FCFA">
-<button id="btnAddCredit">Ajouter crédit</button>
-</div><div class="card">
-<input id="fournisseur" placeholder="À qui doit-on ?">
-<input id="montantMonnaie" type="number" placeholder="Montant FCFA">
-<button id="btnAddMonnaie">Ajouter monnaie</button>
-</div><div class="card"><table id="tableCredits"></table></div>
-<div class="card"><table id="tableMonnaies"></table></div>
+<button id="btnLogin" class="btn">Connexion</button>
+</div>
+</div>
+
+<header id="mainHeader" class="hidden">🍾 Cave « Au QG »</header>
+<button id="logoutBtn" class="logout hidden">🚪 Déconnexion</button>
+
+<!-- HOME -->
+<div id="home" class="container hidden">
+<button class="btn" onclick="show('stock')">📦 Stock</button>
+<button class="btn" onclick="show('ventes')">💰 Ventes</button>
+<button class="btn" onclick="show('recettes')">📊 Recettes</button>
+<button class="btn" onclick="show('graphiques')">📈 Graphiques</button>
+
 <div class="card">
-<h3>Historique paiements</h3>
-<table id="tablePaiements"></table>
+<div class="stat"><span>Stock total</span><b id="stockTotal">0</b></div>
+<div id="stockDetail"></div>
 </div>
-<div class="card adminOnly">
-<h3>Monnaies réglées</h3>
-<table id="tableMonnaiesReglees"></table>
-<div id="adminHistoryButtons" style="margin-top:10px;">
-<button id="restoreHistory">Restaurer tout l'historique</button>
-<button id="clearHistory">Supprimer tout l'historique</button>
+
+<div id="adminNotifications" class="card hidden">
+<h4>🔔 Notifications</h4>
+<ul id="notifList"></ul>
 </div>
 </div>
-</div><script>
-const PIN_ADMIN = "9999";
-const PIN_VENDEUSE = "1234";
+
+<!-- STOCK -->
+<div id="stock" class="container hidden">
+<button class="btn" onclick="show('home')">⬅ Retour</button>
+
+<div class="card">
+<input id="s_nom" placeholder="Nom boisson" list="suggestions">
+<datalist id="suggestions"></datalist>
+
+<select id="s_cat">
+<option>Bière</option>
+<option>Vin</option>
+<option>Whisky</option>
+<option>Jus</option>
+<option>Autres</option>
+</select>
+
+<input id="s_achat" type="number" placeholder="Prix achat">
+<input id="s_vente" type="number" placeholder="Prix vente">
+<input id="s_qte" type="number" placeholder="Quantité">
+
+<select id="s_local">
+<option value="cave">Cave simple</option>
+<option value="bar">Mini-bar</option>
+</select>
+
+<button class="btn" onclick="addBoisson()">Ajouter</button>
+</div>
+
+<div class="card">
+<h4>📦 Résumé Stock</h4>
+<table>
+<thead>
+<tr>
+<th>Nom</th>
+<th>Initial</th>
+<th>Restant</th>
+<th>Sortie</th>
+<th>Alerte</th>
+<th>❌</th>
+</tr>
+</thead>
+<tbody id="stockList"></tbody>
+</table>
+</div>
+
+<div class="card">
+<h4>📜 Historique des mouvements</h4>
+<input type="date" id="filterDate">
+<select id="filterBoisson">
+<option value="">-- Toutes les boissons --</option>
+</select>
+<button class="btn" onclick="filterHistorique()">Filtrer</button>
+
+<table>
+<thead>
+<tr>
+<th>Boisson</th>
+<th>Catégorie</th>
+<th>Type</th>
+<th>Qté</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody id="historiqueList"></tbody>
+</table>
+</div>
+</div>
+
+<!-- VENTES -->
+<div id="ventes" class="container hidden">
+<button class="btn" onclick="show('home')">⬅ Retour</button>
+
+<div class="card">
+<select id="v_boisson"></select>
+<input id="v_qte" type="number" placeholder="Quantité">
+
+<select id="v_local">
+<option value="cave">Cave simple</option>
+<option value="bar">Mini-bar</option>
+</select>
+
+<select id="v_type">
+<option value="simple">Vente simple</option>
+<option value="kit">Vente en kit</option>
+</select>
+
+<button class="btn" onclick="sell()">Valider vente</button>
+</div>
+
+<div id="venteSummary" class="card"></div>
+
+<div class="card">
+<table>
+<thead>
+<tr>
+<th>Boisson</th>
+<th>Qté</th>
+<th>Total</th>
+<th>Local</th>
+<th>❌</th>
+</tr>
+</thead>
+<tbody id="venteList"></tbody>
+</table>
+</div>
+</div>
+
+<!-- RECETTES -->
+<div id="recettes" class="container hidden">
+<button class="btn" onclick="show('home')">⬅ Retour</button>
+
+<div class="card">
+<h4>📅 Filtrer les recettes</h4>
+
+<input type="date" id="recetteDate" onchange="refreshRecettesAdmin()">
+
+<select id="recettePeriode" onchange="refreshRecettesAdmin()">
+<option value="jour">Aujourd’hui</option>
+<option value="semaine">Semaine en cours</option>
+<option value="mois">Mois en cours</option>
+<option value="annee">Année en cours</option>
+</select>
+
+<select id="recetteMoisComplet" onchange="refreshRecettesAdmin()">
+<option value="">-- Voir un mois complet passé --</option>
+</select>
+
+<select id="recetteLocal" onchange="refreshRecettesAdmin()">
+<option value="tous">Tous les locaux</option>
+<option value="cave">Cave simple</option>
+<option value="bar">Mini-bar</option>
+</select>
+
+<p class="smallText">
+NB : si tu choisis un mois complet, l’application affiche tout le chiffre d’affaires et le bénéfice de ce mois, même si le mois est déjà passé.
+</p>
+</div>
+
+<div id="adminRecettes" class="card hidden">
+<h4>💵 Recettes & Bénéfices</h4>
+<div id="recetteDetail"></div>
+</div>
+</div>
+
+<!-- GRAPHIQUES -->
+<div id="graphiques" class="container hidden">
+<button class="btn" onclick="show('home')">⬅ Retour</button>
+
+<div class="card">
+<h3>📦 Stock par boisson</h3>
+<canvas id="stockChart"></canvas>
+</div>
+
+<div class="card">
+<h3>💰 Ventes par boisson</h3>
+<canvas id="venteChart"></canvas>
+</div>
+
+<div class="card">
+<h3>💹 Recettes & Bénéfices</h3>
+
+<select id="graphPeriode" onchange="refreshGraphRecettes()">
+<option value="jour">Jour</option>
+<option value="semaine">Semaine</option>
+<option value="mois">Mois</option>
+<option value="annee">Année</option>
+</select>
+
+<select id="graphLocal" onchange="refreshGraphRecettes()">
+<option value="tous">Tous</option>
+<option value="cave">Cave simple</option>
+<option value="bar">Mini-bar</option>
+</select>
+
+<canvas id="recetteChart"></canvas>
+</div>
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+// --- Initialisation Firebase ---
+firebase.initializeApp({
+ apiKey:"AIzaSyDOCFzih0gVHQsKtfFyCRgyW4OOrQRJeGo",
+ authDomain:"cave-au-qg.firebaseapp.com",
+ databaseURL:"https://cave-au-qg-default-rtdb.firebaseio.com",
+ projectId:"cave-au-qg",
+ storageBucket:"cave-au-qg.appspot.com",
+ messagingSenderId:"374133210544",
+ appId:"1:374133210544:web:125b5297d68e32a5b62a75"
+});
+
+const db = firebase.database();
+
+const PIN_ADMIN = '9999';
+const PIN_VENDEUR = '1234';
+const INITIAL_VENDEUSE = "G";
 
 let roleActuel = null;
+let boissons = [];
+let ventes = [];
 
-let credits = JSON.parse(localStorage.getItem("credits") || "[]");
-let monnaies = JSON.parse(localStorage.getItem("monnaies") || "[]");
-let paiements = JSON.parse(localStorage.getItem("paiements") || "[]");
-let monnaiesReglees = JSON.parse(localStorage.getItem("monnaiesReglees") || "[]");
+let stockChart = null;
+let venteChart = null;
+let recetteChart = null;
 
-function save(){
-  localStorage.setItem("credits", JSON.stringify(credits));
-  localStorage.setItem("monnaies", JSON.stringify(monnaies));
-  localStorage.setItem("paiements", JSON.stringify(paiements));
-  localStorage.setItem("monnaiesReglees", JSON.stringify(monnaiesReglees));
+const boissonsSuggestions = [
+"Bock","Beaufort","Castel","Flag","Tuborg","Guinness","Budweiser",
+"Doppel Munich","Booster Tequila","Asso","Youki Orange","Youki Ananas",
+"Youzou Citron","Ivoire","Ivoire Spéciale","Ivoire Black","Heineken",
+"Mützig","Class","Rhino Energy Malt","Desperados"
+];
+
+if("Notification" in window){
+    Notification.requestPermission();
 }
 
-// ===== CONNEXION =====
-document.getElementById("btnLogin").onclick = function(){
-  const r = document.getElementById("role").value;
-  const p = document.getElementById("pin").value;
+// --- Realtime Firebase ---
+db.ref("boissons").on("value", s => {
+    const data = s.val();
+    boissons = Array.isArray(data) ? data : [];
+    refresh();
+    refreshHistorique();
+});
 
-  if ((r === "admin" && p === PIN_ADMIN) || (r === "vendeuse" && p === PIN_VENDEUSE)){
-    roleActuel = r;
-    document.getElementById("login").style.display = "none";
-    document.getElementById("app").style.display = "block";
+db.ref("ventes").on("value", s => {
+    const data = s.val();
+    ventes = Array.isArray(data) ? data : [];
+    refresh();
+});
 
-    document.querySelectorAll('.adminOnly').forEach(e => {
-      e.style.display = (roleActuel === 'admin') ? 'block' : 'none';
+// --- Login / Logout ---
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('btnLogin').addEventListener('click', loginCheck);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+});
+
+function loginCheck(){
+    const roleInput = document.getElementById('role');
+    const pinInput = document.getElementById('pin');
+
+    if(
+        (roleInput.value === 'admin' && pinInput.value.trim() === PIN_ADMIN) ||
+        (roleInput.value === 'vendeur' && pinInput.value.trim() === PIN_VENDEUR)
+    ){
+        roleActuel = roleInput.value;
+
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('mainHeader').classList.remove('hidden');
+        document.getElementById('logoutBtn').classList.remove('hidden');
+
+        show('home');
+    }else{
+        alert('PIN incorrect');
+    }
+}
+
+function logout(){
+    roleActuel = null;
+    document.getElementById('pin').value = '';
+
+    document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
+    document.getElementById('mainHeader').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.add('hidden');
+    document.getElementById('login').classList.remove('hidden');
+}
+
+function show(id){
+    if(!roleActuel) return logout();
+
+    document.querySelectorAll('.container').forEach(c => c.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+
+    refresh();
+}
+
+// --- Ajouter boisson ---
+function addBoisson(){
+    const nomBoisson = document.getElementById('s_nom').value.trim();
+    const catBoisson = document.getElementById('s_cat').value;
+    const prixAchat = Number(document.getElementById('s_achat').value);
+    const prixVente = Number(document.getElementById('s_vente').value);
+    const qte = Number(document.getElementById('s_qte').value);
+    const local = document.getElementById('s_local').value;
+
+    if(!nomBoisson || prixAchat <= 0 || prixVente <= 0 || qte <= 0){
+        return alert('Donnée invalide');
+    }
+
+    const addedBy = roleActuel === 'vendeur' ? INITIAL_VENDEUSE : "ADMIN";
+
+    let existing = boissons.find(b =>
+        b.nom.toLowerCase() === nomBoisson.toLowerCase() &&
+        b.local === local
+    );
+
+    if(existing){
+        existing.stock += qte;
+        existing.stockInitial += qte;
+
+        if(!existing.historique) existing.historique = [];
+
+        existing.historique.push({
+            type:'ajout',
+            qte:qte,
+            date:new Date().toISOString(),
+            local:local,
+            user:addedBy
+        });
+    }else{
+        boissons.push({
+            nom:nomBoisson,
+            cat:catBoisson,
+            achat:prixAchat,
+            vente:prixVente,
+            stock:qte,
+            stockInitial:qte,
+            local:local,
+            addedBy:addedBy,
+            historique:[
+                {
+                    type:'ajout',
+                    qte:qte,
+                    date:new Date().toISOString(),
+                    local:local,
+                    user:addedBy
+                }
+            ]
+        });
+    }
+
+    db.ref().update({boissons, ventes});
+
+    document.getElementById('s_nom').value = '';
+    document.getElementById('s_cat').selectedIndex = 0;
+    document.getElementById('s_achat').value = '';
+    document.getElementById('s_vente').value = '';
+    document.getElementById('s_qte').value = '';
+
+    refresh();
+}
+
+// --- Vente ---
+function sell(){
+    const selectBoisson = document.getElementById('v_boisson');
+    const i = Number(selectBoisson.value);
+    const q = Number(document.getElementById('v_qte').value);
+    const localVente = document.getElementById('v_local').value;
+    const type = document.getElementById('v_type').value;
+
+    if(isNaN(i) || i < 0 || q <= 0){
+        return alert('Sélection ou quantité invalide');
+    }
+
+    const b = boissons[i];
+
+    if(!b){
+        return alert('Boisson introuvable');
+    }
+
+    if(b.stock < q){
+        return alert('Stock insuffisant');
+    }
+
+    let total = 0;
+
+    if(type === 'simple'){
+        total = q * b.vente;
+    }else if(type === 'kit'){
+        if(localVente === 'bar'){
+            if(b.vente === 600){
+                total = Math.floor(q / 3) * 2000 + (q % 3) * 600;
+            }else if(b.vente === 700){
+                total = Math.floor(q / 3) * 2500 + (q % 3) * 700;
+            }else{
+                total = q * b.vente;
+            }
+        }else{
+            total = q * b.vente;
+        }
+    }
+
+    b.stock -= q;
+
+    if(!b.historique) b.historique = [];
+
+    b.historique.push({
+        type:'vente',
+        qte:q,
+        date:new Date().toISOString(),
+        local:localVente,
+        user:roleActuel === 'vendeur' ? INITIAL_VENDEUSE : "ADMIN"
     });
 
-    document.getElementById("pin").value = "";
-    render();
-  } else {
-    alert("Code incorrect");
-  }
-};
-
-// ===== DÉCONNEXION =====
-document.getElementById("btnLogout").onclick = function(){
-  roleActuel = null;
-  document.getElementById("app").style.display = "none";
-  document.getElementById("login").style.display = "block";
-};
-
-// ===== AJOUTS =====
-document.getElementById("btnAddCredit").onclick = function(){
-  if(!client.value || !montant.value) return alert("Champs manquants");
-  credits.push({c:client.value, b:boisson.value, m:montant.value});
-  client.value = boisson.value = montant.value = "";
-  save(); render();
-};
-
-document.getElementById("btnAddMonnaie").onclick = function(){
-  if(!fournisseur.value || !montantMonnaie.value) return alert("Champs manquants");
-  monnaies.push({f:fournisseur.value, m:montantMonnaie.value});
-  fournisseur.value = montantMonnaie.value = "";
-  save(); render();
-};
-
-// ===== ACTIONS =====
-function payer(i){
-  paiements.push({...credits[i], date:new Date().toLocaleString()});
-  credits.splice(i,1);
-  save(); render();
-}
-
-function reglMonnaie(i){
-  monnaiesReglees.push({
-    f: monnaies[i].f,
-    m: monnaies[i].m,
-    date: new Date().toLocaleString()
-  });
-  monnaies.splice(i,1);
-  save(); render();
-}
-
-function supCredit(i){
-  if(roleActuel !== 'admin') return;
-  credits.splice(i,1);
-  save(); render();
-}
-
-function supMonnaie(i){
-  if(roleActuel !== 'admin') return;
-  monnaies.splice(i,1);
-  save(); render();
-}
-
-function supPaiement(i){
-  if(roleActuel !== 'admin') return;
-  paiements.splice(i,1);
-  save(); render();
-}
-
-function restoreHistory(){
-  if(roleActuel !== 'admin') return;
-  credits = [];
-  monnaies = [];
-  paiements = [];
-  monnaiesReglees = [];
-  save(); render();
-}
-
-function clearHistory(){
-  if(roleActuel !== 'admin') return;
-  paiements = [];
-  save(); render();
-}
-
-restoreHistory.onclick = restoreHistory;
-clearHistory.onclick = clearHistory;
-
-// ===== AFFICHAGE =====
-function render(){
-  tableCredits.innerHTML = '<tr><th>Client</th><th>Produit</th><th>Montant</th><th></th></tr>';
-  credits.forEach((e,i)=>{
-    tableCredits.innerHTML += `<tr><td>${e.c}</td><td>${e.b||''}</td><td>${e.m} FCFA</td><td><button onclick="payer(${i})">Payé</button>${roleActuel==='admin'?` <button class='danger' onclick="supCredit(${i})">X</button>`:''}</td></tr>`;
-  });
-
-  tableMonnaies.innerHTML = '<tr><th>Personne</th><th>Montant</th><th></th></tr>';
-  monnaies.forEach((e,i)=>{
-    tableMonnaies.innerHTML += `<tr><td>${e.f}</td><td>${e.m} FCFA</td><td>${roleActuel==='admin'?`<button class='danger' onclick="supMonnaie(${i})">X</button>`:`<button onclick="reglMonnaie(${i})">Réglé</button>`}</td></tr>`;
-  });
-
-  if(roleActuel === 'admin'){
-    tableMonnaiesReglees.innerHTML = '<tr><th>Personne</th><th>Montant</th><th>Date</th></tr>';
-    monnaiesReglees.forEach(m=>{
-      tableMonnaiesReglees.innerHTML += `<tr><td>${m.f}</td><td>${m.m} FCFA</td><td>${m.date}</td></tr>`;
+    ventes.push({
+        nom:b.nom,
+        cat:b.cat,
+        qte:q,
+        total:total,
+        achat:b.achat,
+        vente:b.vente,
+        benefice: total - (b.achat * q),
+        date:new Date().toISOString(),
+        local:localVente,
+        type:type,
+        user:roleActuel === 'vendeur' ? INITIAL_VENDEUSE : "ADMIN"
     });
-  }
 
-  tablePaiements.innerHTML = '<tr><th>Client</th><th>Produit</th><th>Montant</th><th>Date</th><th></th></tr>';
-  paiements.forEach((p,i)=>{
-    tablePaiements.innerHTML += `<tr><td>${p.c}</td><td>${p.b||''}</td><td>${p.m} FCFA</td><td>${p.date}</td><td>${roleActuel==='admin'?`<button class='danger' onclick="supPaiement(${i})">X</button>`:''}</td></tr>`;
-  });
+    db.ref().update({boissons, ventes});
+
+    document.getElementById('v_qte').value = '';
+
+    if(Notification.permission === "granted"){
+        new Notification("💰 Nouvelle vente", {
+            body:`${q} ${b.nom} - ${total} FCFA`
+        });
+    }
+
+    refresh();
 }
-</script></body>
+
+// --- Refresh global ---
+function refresh(){
+    const stockList = document.getElementById('stockList');
+    const venteList = document.getElementById('venteList');
+    const vBoisson = document.getElementById('v_boisson');
+
+    if(!stockList || !venteList || !vBoisson) return;
+
+    stockList.innerHTML = '';
+    vBoisson.innerHTML = '';
+    venteList.innerHTML = '';
+
+    let totalStock = 0;
+
+    const datalist = document.getElementById('suggestions');
+    datalist.innerHTML = '';
+
+    boissonsSuggestions.forEach(b => {
+        const option = document.createElement('option');
+        option.value = b;
+        datalist.appendChild(option);
+    });
+
+    boissons.forEach((b, i) => {
+        totalStock += Number(b.stock || 0);
+
+        const stockSortie = Number(b.stockInitial || 0) - Number(b.stock || 0);
+
+        stockList.innerHTML += `
+        <tr>
+            <td>${b.nom}</td>
+            <td>${b.stockInitial}</td>
+            <td>${b.stock}</td>
+            <td>${stockSortie}</td>
+            <td class="${b.stock <= 5 ? 'alert' : ''}">
+                ${b.stock <= 5 ? 'Faible' : ''}
+            </td>
+            <td>
+                ${roleActuel === 'admin' ? `<button class="delBtn" onclick="deleteStock(${i})">❌</button>` : ''}
+            </td>
+        </tr>`;
+
+        const option = document.createElement('option');
+        option.text = `${b.nom} - ${b.local} - Stock: ${b.stock}`;
+        option.value = i;
+        vBoisson.add(option);
+    });
+
+    document.getElementById('stockTotal').innerText = totalStock;
+
+    ventes.slice().reverse().forEach((v, reverseIndex) => {
+        const i = ventes.length - 1 - reverseIndex;
+
+        venteList.innerHTML += `
+        <tr>
+            <td>${v.nom}</td>
+            <td>${v.qte}</td>
+            <td>${v.total} FCFA</td>
+            <td>${v.local}</td>
+            <td>
+                ${roleActuel === 'admin' ? `<button class="delBtn" onclick="deleteVente(${i})">❌</button>` : ''}
+            </td>
+        </tr>`;
+    });
+
+    remplirMoisComplets();
+    refreshRecettesAdmin();
+
+    if(!document.getElementById('graphiques').classList.contains('hidden')){
+        refreshGraphRecettes();
+    }
+}
+
+// --- Historique et filtres ---
+function refreshHistorique(){
+    const filterBoisson = document.getElementById('filterBoisson');
+    filterBoisson.innerHTML = '<option value="">-- Toutes les boissons --</option>';
+
+    boissons.forEach(b => {
+        const option = document.createElement('option');
+        option.value = b.nom;
+        option.text = b.nom;
+        filterBoisson.add(option);
+    });
+
+    filterHistorique();
+}
+
+function filterHistorique(){
+    const date = document.getElementById('filterDate').value;
+    const boisson = document.getElementById('filterBoisson').value;
+    const tbody = document.getElementById('historiqueList');
+
+    tbody.innerHTML = '';
+
+    boissons.forEach(b => {
+        if(boisson && b.nom !== boisson) return;
+        if(!b.historique) return;
+
+        b.historique.forEach(h => {
+            if(date && h.date.split('T')[0] !== date) return;
+
+            tbody.innerHTML += `
+            <tr>
+                <td>${b.nom}</td>
+                <td>${b.cat}</td>
+                <td>${h.type}</td>
+                <td>${h.qte}</td>
+                <td>${new Date(h.date).toLocaleString('fr-FR')}</td>
+            </tr>`;
+        });
+    });
+}
+
+// --- Supprimer stock / vente ---
+function deleteStock(i){
+    if(roleActuel !== 'admin') return alert('Action réservée à l’admin');
+
+    if(!confirm('Confirmer suppression du stock ?')) return;
+
+    boissons.splice(i, 1);
+    db.ref('boissons').set(boissons);
+    refresh();
+}
+
+function deleteVente(i){
+    if(roleActuel !== 'admin') return alert('Action réservée à l’admin');
+
+    if(!confirm('Confirmer suppression vente ?')) return;
+
+    ventes.splice(i, 1);
+    db.ref('ventes').set(ventes);
+    refresh();
+}
+
+// --- Remplir filtre des mois complets ---
+function remplirMoisComplets(){
+    const select = document.getElementById('recetteMoisComplet');
+    if(!select) return;
+
+    const valeurActuelle = select.value;
+
+    const moisExistants = [...new Set(
+        ventes.map(v => {
+            const d = new Date(v.date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        })
+    )].sort().reverse();
+
+    select.innerHTML = '<option value="">-- Voir un mois complet passé --</option>';
+
+    moisExistants.forEach(mois => {
+        const [annee, m] = mois.split('-');
+
+        const nomMois = new Date(Number(annee), Number(m) - 1, 1).toLocaleString('fr-FR', {
+            month:'long',
+            year:'numeric'
+        });
+
+        const option = document.createElement('option');
+        option.value = mois;
+        option.textContent = nomMois.charAt(0).toUpperCase() + nomMois.slice(1);
+        select.appendChild(option);
+    });
+
+    select.value = valeurActuelle;
+}
+
+// --- Recettes admin ---
+function refreshRecettesAdmin(){
+    if(roleActuel !== 'admin') return;
+
+    remplirMoisComplets();
+
+    const periode = document.getElementById('recettePeriode').value;
+    const local = document.getElementById('recetteLocal').value;
+    const dateFiltre = document.getElementById('recetteDate').value;
+    const moisComplet = document.getElementById('recetteMoisComplet').value;
+
+    const now = new Date();
+
+    let total = 0;
+    let benefice = 0;
+
+    const details = {};
+
+    ventes.forEach(v => {
+        if(local !== 'tous' && v.local !== local) return;
+
+        const vd = new Date(v.date);
+        let include = false;
+
+        if(moisComplet){
+            const moisVente = `${vd.getFullYear()}-${String(vd.getMonth() + 1).padStart(2, '0')}`;
+            include = moisVente === moisComplet;
+        }else{
+            if(dateFiltre && vd.toISOString().split('T')[0] !== dateFiltre) return;
+
+            switch(periode){
+                case 'jour':
+                    include = vd.toDateString() === now.toDateString();
+                    break;
+
+                case 'semaine':
+                    const start = new Date(now);
+                    start.setDate(now.getDate() - now.getDay());
+                    start.setHours(0,0,0,0);
+                    include = vd >= start && vd <= now;
+                    break;
+
+                case 'mois':
+                    include = vd.getMonth() === now.getMonth() &&
+                              vd.getFullYear() === now.getFullYear();
+                    break;
+
+                case 'annee':
+                    include = vd.getFullYear() === now.getFullYear();
+                    break;
+            }
+        }
+
+        if(include){
+            const caVente = Number(v.total || 0);
+
+            let benefVente = 0;
+
+            if(typeof v.benefice !== 'undefined'){
+                benefVente = Number(v.benefice || 0);
+            }else if(typeof v.achat !== 'undefined'){
+                benefVente = caVente - (Number(v.achat || 0) * Number(v.qte || 0));
+            }else{
+                const b = boissons.find(x => x.nom === v.nom);
+                benefVente = b ? caVente - (Number(b.achat || 0) * Number(v.qte || 0)) : 0;
+            }
+
+            total += caVente;
+            benefice += benefVente;
+
+            if(!details[v.nom]){
+                details[v.nom] = {
+                    qte:0,
+                    ca:0,
+                    benefice:0
+                };
+            }
+
+            details[v.nom].qte += Number(v.qte || 0);
+            details[v.nom].ca += caVente;
+            details[v.nom].benefice += benefVente;
+        }
+    });
+
+    let titreFiltre = '';
+
+    if(moisComplet){
+        const [annee, mois] = moisComplet.split('-');
+        titreFiltre = new Date(Number(annee), Number(mois) - 1, 1).toLocaleString('fr-FR', {
+            month:'long',
+            year:'numeric'
+        });
+        titreFiltre = titreFiltre.charAt(0).toUpperCase() + titreFiltre.slice(1);
+    }else if(dateFiltre){
+        titreFiltre = `Date sélectionnée : ${dateFiltre}`;
+    }else{
+        titreFiltre = `Période : ${periode}`;
+    }
+
+    let html = `
+    <div class="totalBox">
+        <h3>${titreFiltre}</h3>
+        <div class="stat"><span>Chiffre d'affaires total</span><b>${total.toLocaleString('fr-FR')} FCFA</b></div>
+        <div class="stat"><span>Bénéfice total</span><b>${benefice.toLocaleString('fr-FR')} FCFA</b></div>
+    </div>
+    <hr>
+    `;
+
+    if(Object.keys(details).length === 0){
+        html += `<p class="smallText">Aucune vente trouvée pour ce filtre.</p>`;
+    }else{
+        for(const nom in details){
+            html += `
+            <div class="stat"><span>${nom} - Quantité vendue</span><b>${details[nom].qte}</b></div>
+            <div class="stat"><span>${nom} - CA</span><b>${details[nom].ca.toLocaleString('fr-FR')} FCFA</b></div>
+            <div class="stat"><span>${nom} - Bénéfice</span><b>${details[nom].benefice.toLocaleString('fr-FR')} FCFA</b></div>
+            <hr>`;
+        }
+    }
+
+    document.getElementById('recetteDetail').innerHTML = html;
+    document.getElementById('adminRecettes').classList.remove('hidden');
+}
+
+// --- Graphiques ---
+function refreshGraphRecettes(){
+    const periode = document.getElementById('graphPeriode').value;
+    const local = document.getElementById('graphLocal').value;
+    const now = new Date();
+
+    const aggRecettes = {};
+
+    ventes.forEach(v => {
+        if(local !== 'tous' && v.local !== local) return;
+
+        const vd = new Date(v.date);
+        let include = false;
+
+        switch(periode){
+            case 'jour':
+                include = vd.toDateString() === now.toDateString();
+                break;
+
+            case 'semaine':
+                const start = new Date(now);
+                start.setDate(now.getDate() - now.getDay());
+                start.setHours(0,0,0,0);
+                include = vd >= start && vd <= now;
+                break;
+
+            case 'mois':
+                include = vd.getMonth() === now.getMonth() &&
+                          vd.getFullYear() === now.getFullYear();
+                break;
+
+            case 'annee':
+                include = vd.getFullYear() === now.getFullYear();
+                break;
+        }
+
+        if(include){
+            aggRecettes[v.nom] = (aggRecettes[v.nom] || 0) + Number(v.total || 0);
+        }
+    });
+
+    const labelsRecettes = Object.keys(aggRecettes);
+    const dataRecettes = Object.values(aggRecettes);
+
+    if(recetteChart) recetteChart.destroy();
+
+    recetteChart = new Chart(document.getElementById('recetteChart'), {
+        type:'bar',
+        data:{
+            labels:labelsRecettes,
+            datasets:[
+                {
+                    label:'Recettes (FCFA)',
+                    data:dataRecettes,
+                    backgroundColor:'hsl(200,70%,50%)'
+                }
+            ]
+        },
+        options:{
+            responsive:true,
+            plugins:{legend:{display:false}},
+            scales:{y:{beginAtZero:true}}
+        }
+    });
+
+    const stockAgg = {};
+
+    boissons.forEach(b => {
+        stockAgg[`${b.nom} (${b.local})`] = Number(b.stock || 0);
+    });
+
+    if(stockChart) stockChart.destroy();
+
+    stockChart = new Chart(document.getElementById('stockChart'), {
+        type:'bar',
+        data:{
+            labels:Object.keys(stockAgg),
+            datasets:[
+                {
+                    label:'Stock',
+                    data:Object.values(stockAgg),
+                    backgroundColor:'hsl(120,60%,50%)'
+                }
+            ]
+        },
+        options:{
+            responsive:true,
+            plugins:{legend:{display:false}},
+            scales:{y:{beginAtZero:true}}
+        }
+    });
+
+    const venteAgg = {};
+
+    ventes.forEach(v => {
+        venteAgg[v.nom] = (venteAgg[v.nom] || 0) + Number(v.total || 0);
+    });
+
+    if(venteChart) venteChart.destroy();
+
+    venteChart = new Chart(document.getElementById('venteChart'), {
+        type:'bar',
+        data:{
+            labels:Object.keys(venteAgg),
+            datasets:[
+                {
+                    label:'Ventes (FCFA)',
+                    data:Object.values(venteAgg),
+                    backgroundColor:'hsl(50,70%,50%)'
+                }
+            ]
+        },
+        options:{
+            responsive:true,
+            plugins:{legend:{display:false}},
+            scales:{y:{beginAtZero:true}}
+        }
+    });
+}
+</script>
+
+</body>
 </html>
